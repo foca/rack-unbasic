@@ -77,8 +77,19 @@ class TestUnbasic < Test::Unit::TestCase
   context "Passing the credentials as parameters" do
     test "should work as if using HTTP Basic" do
       get "/foobar", :username => "johndoe", :password => "secret"
-      assert_equal 200, last_response.status
+      assert last_response.ok?
       assert_equal "Hi there", last_response.body
+    end
+
+    test "should work for subsequent requests" do
+      get "/foobar", :username => "johndoe", :password => "secret"
+      assert last_response.ok?
+
+      get "/baz"
+      assert last_response.ok?
+
+      get "/quux"
+      assert last_response.ok?
     end
   end
 

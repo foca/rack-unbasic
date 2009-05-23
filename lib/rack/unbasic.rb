@@ -13,14 +13,18 @@ module Rack
 
       clean_session_data
 
-      authorize_with_params
+      authorize_from_params || authorize_from_session
 
-      response = @app.call(@env)
+      @response = @app.call(@env)
 
-      case response[0].to_i
-        when 401; handle_unauthorized || response
-        when 400; handle_bad_request || response
-        else response
+      case response_status
+      when 401
+        unauthorized_response
+      when 400
+        bad_request_response
+      else
+        store_credentials
+        @response
       end
     end
 
@@ -34,41 +38,64 @@ module Rack
 
     private
 
-    def handle_unauthorized
-      return nil if @locations["unauthorized"].nil?
+    def unauthorized_response
+      return @response if @locations["unauthorized"].nil?
       store_location_and_response_code(401)
       [302, {"Location" => @locations["unauthorized"]}, []]
     end
 
-    def handle_bad_request
-      return nil if @locations["bad_request"].nil?
+    def bad_request_response
+      return @response if @locations["bad_request"].nil?
       store_location_and_response_code(400)
       [302, {"Location" => @locations["bad_request"]}, []]
     end
 
     def store_location_and_response_code(code)
-      @env["rack.session"]["rack-unbasic.return-to"] = @env["PATH_INFO"]
-      @env["rack.session"]["rack-unbasic.code"] = code
+      session["rack-unbasic.return-to"] = @env["PATH_INFO"]
+      session["rack-unbasic.code"] = code
     end
 
     def clean_session_data
-      unless @env["rack.session"].respond_to?("delete")
+      unless session.respond_to?("delete")
         raise "You need to enable sessions for this middleware to work"
       end
-      @env["rack-unbasic.return-to"] = @env["rack.session"].delete("rack-unbasic.return-to")
-      @env["rack-unbasic.code"] = @env["rack.session"].delete("rack-unbasic.code")
+      @env["rack-unbasic.return-to"] = session.delete("rack-unbasic.return-to")
+      @env["rack-unbasic.code"] = session.delete("rack-unbasic.code")
     end
 
-    def authorize_with_params
-      return if request.params["username"].nil? || request.params["password"].nil?
-      return unless @env["HTTP_AUTHORIZATION"].nil?
+    def authorize_from_params
+      return nil if request.params["username"].nil? || request.params["password"].nil?
+      send_http_authorization(request.params["username"], request.params["password"])
+    end
 
-      login = ["#{request.params["username"]}:#{request.params["password"]}"].pack("m*")
-      @env["HTTP_AUTHORIZATION"] = "Basic #{login}"
+    def authorize_from_session
+      return nil if session["rack-unbasic.username"].nil? || session["rack-unbasic.password"].nil?
+      send_http_authorization(session["rack-unbasic.username"], session["rack-unbasic.password"])
+    end
+
+    def send_http_authorization(username, password)
+      return nil unless @env["HTTP_AUTHORIZATION"].nil?
+      @username, @password = username, password
+      encoded_login = ["#{username}:#{password}"].pack("m*")
+      @env["HTTP_AUTHORIZATION"] = "Basic #{encoded_login}"
+    end
+
+    def store_credentials
+      return if @username.nil? || @password.nil?
+      session["rack-unbasic.username"] = @username
+      session["rack-unbasic.password"] = @password
+    end
+
+    def response_status
+      @response[0].to_i
     end
 
     def request
       @request ||= Rack::Request.new(@env)
+    end
+
+    def session
+      @env["rack.session"]
     end
   end
 end
