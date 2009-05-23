@@ -98,6 +98,11 @@ class TestUnbasic < Test::Unit::TestCase
       @app ||= unbasic_app
     end
 
+    test "it doesn't interfere with pages that don't require auth" do
+      get "/login"
+      assert last_response.ok?
+    end
+
     test "it returns the original 401 if credentials aren't given" do
       get "/foobar"
       assert_equal 401, last_response.status
