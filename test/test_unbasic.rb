@@ -36,21 +36,32 @@ class TestUnbasic < Test::Unit::TestCase
   end
 
   context "Without providing authorization" do
-    test "it returns a 302 status code" do
-      get "/foobar"
-      assert_equal 302, last_response.status
-    end
-
     test "it redirects to the specified location" do
       get "/foobar"
       follow_redirect!
       assert_equal "http://example.org/login", last_request.url
     end
 
-    test "it saves the previous url in env['rack-unbasic.return-to']" do
+    test "it saves the previous url and code in env['rack-unbasic.*']" do
       get "/foobar"
       follow_redirect!
       assert_equal "/foobar", last_request.env["rack-unbasic.return-to"]
+      assert_equal 401, last_request.env["rack-unbasic.code"]
+    end
+  end
+
+  context "When providing a broken authorization (or at least not HTTP Basic" do
+    test "it redirects to the specified location" do
+      get "/foobar", {}, { "HTTP_AUTHORIZATION" => "cuack" }
+      follow_redirect!
+      assert_equal "http://example.org/login", last_request.url
+    end
+
+    test "it saves the previous url and code in env['rack-unbasic.*']" do
+      get "/foobar", {}, { "HTTP_AUTHORIZATION" => "cuack" }
+      follow_redirect!
+      assert_equal "/foobar", last_request.env["rack-unbasic.return-to"]
+      assert_equal 400, last_request.env["rack-unbasic.code"]
     end
   end
 
@@ -76,9 +87,14 @@ class TestUnbasic < Test::Unit::TestCase
       @app ||= unbasic_app
     end
 
-    test "it just returns the original response to the user" do
+    test "it returns the original 401 if credentials aren't given" do
       get "/foobar"
       assert_equal 401, last_response.status
+    end
+
+    test "it returns the original 400 if credentials are malformed" do
+      get "/foobar", {}, { "HTTP_AUTHORIZATION" => "cuack" }
+      assert_equal 400, last_response.status
     end
   end
 end
