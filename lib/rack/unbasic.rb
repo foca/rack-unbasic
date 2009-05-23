@@ -2,10 +2,10 @@ require "rack"
 
 module Rack
   class Unbasic
-    def initialize(app, &middleware)
+    def initialize(app, &block) # :yields: middleware
       @app = app
       @locations = {}
-      middleware.call(self) if middleware
+      block.call(self) if block
     end
 
     def call(env)
@@ -17,7 +17,7 @@ module Rack
 
       @response = @app.call(@env)
 
-      case response_status
+      case status_code
       when 401
         unauthorized_response
       when 400
@@ -40,19 +40,19 @@ module Rack
 
     def unauthorized_response
       return @response if @locations["unauthorized"].nil?
-      store_location_and_response_code(401)
+      store_location_and_response_code
       [302, {"Location" => @locations["unauthorized"]}, []]
     end
 
     def bad_request_response
       return @response if @locations["bad_request"].nil?
-      store_location_and_response_code(400)
+      store_location_and_response_code
       [302, {"Location" => @locations["bad_request"]}, []]
     end
 
-    def store_location_and_response_code(code)
+    def store_location_and_response_code
       session["rack-unbasic.return-to"] = @env["PATH_INFO"]
-      session["rack-unbasic.code"] = code
+      session["rack-unbasic.code"] = status_code
     end
 
     def clean_session_data
@@ -86,7 +86,7 @@ module Rack
       session["rack-unbasic.password"] = @password
     end
 
-    def response_status
+    def status_code
       @response[0].to_i
     end
 
