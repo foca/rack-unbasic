@@ -1,3 +1,5 @@
+require "rack"
+
 module Rack
   class Unbasic
     def initialize(app, &middleware)
@@ -10,6 +12,8 @@ module Rack
       @env = env
 
       clean_session_data
+
+      authorize_with_params
 
       response = @app.call(@env)
 
@@ -53,6 +57,18 @@ module Rack
       end
       @env["rack-unbasic.return-to"] = @env["rack.session"].delete("rack-unbasic.return-to")
       @env["rack-unbasic.code"] = @env["rack.session"].delete("rack-unbasic.code")
+    end
+
+    def authorize_with_params
+      return if request.params["username"].nil? || request.params["password"].nil?
+      return unless @env["HTTP_AUTHORIZATION"].nil?
+
+      login = ["#{request.params["username"]}:#{request.params["password"]}"].pack("m*")
+      @env["HTTP_AUTHORIZATION"] = "Basic #{login}"
+    end
+
+    def request
+      @request ||= Rack::Request.new(@env)
     end
   end
 end
