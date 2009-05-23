@@ -5,6 +5,11 @@ require "rack/test"
 require "contest"
 require File.dirname(__FILE__) + "/../lib/rack/unbasic"
 
+begin
+  require "redgreen"
+rescue LoadError
+end
+
 class TestUnbasic < Test::Unit::TestCase
   include Rack::Test::Methods
 
