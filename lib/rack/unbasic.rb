@@ -2,13 +2,26 @@ require "rack"
 
 module Rack
   class Unbasic
-    def initialize(app, &block) # :yields: middleware
+    # Create the middleware. You can pass a block to configure how to handle
+    # 401 and 400 responses from the downstream app. See #unauthorized and
+    # #bad_request.
+    def initialize(app, &block) # :yields: self
       @app = app
       @locations = {}
       block.call(self) if block
     end
 
-    def call(env)
+    # Set the redirect URL for 401 responses from the downstream app.
+    def unauthorized(location)
+      @locations["unauthorized"] = location
+    end
+
+    # Set the redirect URL for 400 responses from the downstream app.
+    def bad_request(location)
+      @locations["bad_request"] = location
+    end
+
+    def call(env) 
       @env = env
 
       clean_session_data
@@ -26,14 +39,6 @@ module Rack
         store_credentials
         @response
       end
-    end
-
-    def unauthorized(location)
-      @locations["unauthorized"] = location
-    end
-
-    def bad_request(location)
-      @locations["bad_request"] = location
     end
 
     private
