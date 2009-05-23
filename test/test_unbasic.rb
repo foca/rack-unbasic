@@ -6,21 +6,24 @@ require File.dirname(__FILE__) + "/../lib/rack/unbasic"
 class TestUnbasic < Test::Unit::TestCase
   include Rack::Test::Methods
 
-  def app_failing_with(code)
-    lambda do |env|
-      if env["PATH_INFO"] == "/login"
-        [200, {}, "Please login"]
-      else
-        [code, {}, "Go away!"]
-      end
-    end
+  def unbasic_app_failing_with(code, &unbasic)
+    Rack::Builder.new {
+      use Rack::Session::Cookie
+      use Rack::Unbasic, &unbasic
+      run lambda {|env| 
+        if env["PATH_INFO"] == "/login"
+          [200, {}, "Please login"]
+        else
+          [code, {}, "Go away!"]
+        end 
+      }
+    }
   end
 
   context "when the downstream app returns a 401 status code" do
     context "and Unbasic handles unauthorized requests" do
       def app
-        downstream = app_failing_with(401)
-        Rack::Unbasic.new(downstream) do |on|
+        @app ||= unbasic_app_failing_with 401 do |on|
           on.unauthorized "/login"
         end
       end
@@ -35,11 +38,17 @@ class TestUnbasic < Test::Unit::TestCase
         follow_redirect!
         assert_equal "http://example.org/login", last_request.url
       end
+
+      test "it saves the previous url in env['rack-unbasic.return-to']" do
+        get "/foobar"
+        follow_redirect!
+        assert_equal "/foobar", last_request.env["rack-unbasic.return-to"]
+      end
     end
 
     context "but Unbasic doesn't handle unauthorized requests" do
       def app
-        Rack::Unbasic.new(app_failing_with(401))
+        @app ||= unbasic_app_failing_with 401
       end
 
       test "it just returns the original response to the user" do
@@ -53,8 +62,7 @@ class TestUnbasic < Test::Unit::TestCase
   context "when the downstream app returns a 400 status code" do
     context "and Unbasic handles bad requests" do
       def app
-        downstream = app_failing_with(400)
-        Rack::Unbasic.new(downstream) do |on|
+        @app ||= unbasic_app_failing_with 400 do |on|
           on.bad_request "/login"
         end
       end
@@ -69,11 +77,17 @@ class TestUnbasic < Test::Unit::TestCase
         follow_redirect!
         assert_equal "http://example.org/login", last_request.url
       end
+
+      test "it saves the previous url in env['rack-unbasic.return-to']" do
+        get "/foobar"
+        follow_redirect!
+        assert_equal "/foobar", last_request.env["rack-unbasic.return-to"]
+      end
     end
 
     context "but Unbasic doesn't handle bad requests" do
       def app
-        Rack::Unbasic.new(app_failing_with(400))
+        @app ||= unbasic_app_failing_with 400
       end
 
       test "it just returns the original response to the user" do
