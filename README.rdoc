@@ -1,0 +1,28 @@
+= Rack::Unbasic
+
+Wraps HTTP authentication in more friendly workflows.
+
+== Usage
+
+    use Rack::Unbasic do |on|
+      on.bad_request '/login'
+      on.unauthorized '/login'
+    end
+
+A response with a 401 or 400 status code will be redirected to the routes you
+specify in the config, with the <tt>env ['rack-unbasic.code']</tt> set to whatever
+the original status code was, and <tt>env ['rack-unbasic.return-to']</tt> set to
+whatever the requested URI was.
+
+When a request comes in with <tt>:username</tt> and <tt>:password</tt> params,
+those will be mapped to basic auth credentials, and the appropriate headers will
+be added.
+
+Once authorized, the appropriate credentials will be stashed in the session.
+Subsequent requests will use the credentials in the session for authorization.
+
+== Credits
+
+Idea:: Pat Nakajima (github[http://github.com/nakajima])
+Initial implementation:: Nicolás Sanguinetti (github[http://github.com/foca])
+License:: MIT. See attached LICENSE file.
