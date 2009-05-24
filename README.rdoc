@@ -10,8 +10,8 @@ Wraps HTTP authentication in more friendly workflows.
     end
 
 A response with a 401 or 400 status code will be redirected to the routes you
-specify in the config, with the <tt>env ['rack-unbasic.code']</tt> set to whatever
-the original status code was, and <tt>env ['rack-unbasic.return-to']</tt> set to
+specify in the config, with the <tt>\env['rack-unbasic.code']</tt> set to whatever
+the original status code was, and <tt>\env['rack-unbasic.return-to']</tt> set to
 whatever the requested URI was.
 
 When a request comes in with <tt>:username</tt> and <tt>:password</tt> params,
