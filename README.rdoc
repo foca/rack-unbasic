@@ -4,6 +4,8 @@ Wraps HTTP authentication in more friendly workflows.
 
 == Usage
 
+    require "rack-unbasic"
+
     use Rack::Unbasic do |on|
       on.bad_request '/login'
       on.unauthorized '/login'
@@ -20,6 +22,14 @@ be added.
 
 Once authorized, the appropriate credentials will be stashed in the session.
 Subsequent requests will use the credentials in the session for authorization.
+
+== Install
+
+    gem install rack-unbasic
+
+Or cloning the git source repository:
+
+    git clone git://github.com/foca/rack-unbasic.git
 
 == Credits
 
